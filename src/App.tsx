@@ -13,23 +13,30 @@ import {
   History, 
   Sparkles,
   X,
-  User
+  User,
+  Calendar,
+  Briefcase
 } from 'lucide-react';
 
 interface Participant {
   id: string;
   name: string;
+  date: string;
 }
 
 interface DrawResult {
   id: string;
   winner: string;
+  winnerDate: string;
+  taskName: string;
   timestamp: number;
 }
 
 export default function App() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [newName, setNewName] = useState('');
+  const [taskName, setTaskName] = useState('');
+  const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [winner, setWinner] = useState<Participant | null>(null);
   const [history, setHistory] = useState<DrawResult[]>([]);
@@ -70,11 +77,35 @@ export default function App() {
     
     const newParticipant: Participant = {
       id: Math.random().toString(36).substr(2, 9),
-      name: trimmedName
+      name: trimmedName,
+      date: newDate
     };
     
     setParticipants([...participants, newParticipant]);
     setNewName('');
+    setNewDate(new Date().toISOString().split('T')[0]);
+  };
+
+  const selectWinnerManually = (participant: Participant) => {
+    if (isDrawing) return;
+    
+    setIsDrawing(true);
+    setWinner(null);
+
+    // Simulate drawing animation but with a fixed winner
+    setTimeout(() => {
+      setWinner(participant);
+      setIsDrawing(false);
+      
+      const newResult: DrawResult = {
+        id: Math.random().toString(36).substr(2, 9),
+        winner: participant.name,
+        winnerDate: participant.date,
+        taskName: taskName.trim() || 'সাধারণ ড্র',
+        timestamp: Date.now()
+      };
+      setHistory([newResult, ...history].slice(0, 50));
+    }, 1500); // Shorter animation for manual selection
   };
 
   const removeParticipant = (id: string) => {
@@ -107,6 +138,8 @@ export default function App() {
       const newResult: DrawResult = {
         id: Math.random().toString(36).substr(2, 9),
         winner: selectedWinner.name,
+        winnerDate: selectedWinner.date,
+        taskName: taskName.trim() || 'সাধারণ ড্র',
         timestamp: Date.now()
       };
       setHistory([newResult, ...history].slice(0, 50));
@@ -148,21 +181,42 @@ export default function App() {
         <section className="space-y-6">
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Briefcase className="w-4 h-4" /> কাজের নাম (ঐচ্ছিক)
+            </h2>
+            <input
+              type="text"
+              value={taskName}
+              onChange={(e) => setTaskName(e.target.value)}
+              placeholder="যেমন: দুপুরের খাবার আনা, ফাইল জমা দেওয়া..."
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            />
+          </div>
+
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
               <UserPlus className="w-4 h-4" /> অংশগ্রহণকারী যোগ করুন
             </h2>
-            <form onSubmit={addParticipant} className="flex gap-2">
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="নাম লিখুন..."
-                className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              />
+            <form onSubmit={addParticipant} className="flex flex-col gap-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="নাম লিখুন..."
+                  className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                />
+                <input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm text-gray-600"
+                />
+              </div>
               <button 
                 type="submit"
-                className="bg-indigo-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-100 active:scale-95"
+                className="w-full bg-indigo-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-100 active:scale-95 flex items-center justify-center gap-2"
               >
-                যোগ করুন
+                <UserPlus className="w-5 h-5" /> যোগ করুন
               </button>
             </form>
           </div>
@@ -203,13 +257,28 @@ export default function App() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100 group hover:border-indigo-200 transition-colors"
                     >
-                      <span className="font-medium text-gray-700">{p.name}</span>
-                      <button 
-                        onClick={() => removeParticipant(p.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-gray-700">{p.name}</span>
+                        <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                          <Calendar className="w-3 h-3" /> {p.date}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => selectWinnerManually(p)}
+                          className="p-1.5 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                          title="বিজয়ী হিসেবে নির্বাচন করুন"
+                        >
+                          <Trophy className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => removeParticipant(p.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          title="মুছে ফেলুন"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </motion.div>
                   ))
                 )}
@@ -269,7 +338,9 @@ export default function App() {
                   <div className="space-y-2">
                     <p className="text-sm font-bold text-indigo-600 uppercase tracking-[0.2em]">অভিনন্দন!</p>
                     <h3 className="text-5xl font-black text-gray-900 break-words">{winner.name}</h3>
-                    <p className="text-gray-500">আমাদের ভাগ্যবান বিজয়ী!</p>
+                    <p className="text-gray-500 flex items-center justify-center gap-2">
+                      <Calendar className="w-4 h-4" /> {winner.date} - আমাদের ভাগ্যবান বিজয়ী!
+                    </p>
                   </div>
                   <button 
                     onClick={() => setWinner(null)}
@@ -367,6 +438,14 @@ export default function App() {
                         </span>
                       </div>
                       <p className="text-lg font-bold text-gray-900">{item.winner}</p>
+                      <div className="mt-2 space-y-1">
+                        <p className="text-[10px] text-gray-500 flex items-center gap-1">
+                          <Briefcase className="w-3 h-3" /> {item.taskName}
+                        </p>
+                        <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                          <Calendar className="w-3 h-3" /> {item.winnerDate}
+                        </p>
+                      </div>
                     </div>
                   ))
                 )}
